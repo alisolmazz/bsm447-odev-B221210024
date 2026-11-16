@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Ateş Pokédex",
+    "slug": "ates-pokedex",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#8c321a",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.alisolmazz.atespokedex"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

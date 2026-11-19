@@ -1,7 +1,8 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 type StackRoutes = { Tabs: undefined; Detail: { name: string } };
 type TabRoutes = { List: undefined; Saved: undefined };
@@ -9,10 +10,65 @@ type TabRoutes = { List: undefined; Saved: undefined };
 const Stack = createNativeStackNavigator<StackRoutes>();
 const Tabs = createBottomTabNavigator<TabRoutes>();
 
+type Pokemon = { name: string; url: string };
+type TypeResponse = { pokemon: { pokemon: Pokemon }[] };
+
 function ListScreen() {
+  const [items, setItems] = useState<Pokemon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError(false);
+
+    async function loadPokemon() {
+      try {
+        const response = await fetch('https://pokeapi.co/api/v2/type/fire', {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('Pokémon listesi alınamadı');
+        const data: TypeResponse = await response.json();
+        if (!controller.signal.aborted) {
+          setItems(data.pokemon.map((entry) => entry.pokemon));
+        }
+      } catch {
+        if (!controller.signal.aborted) setError(true);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void loadPokemon();
+    return () => controller.abort();
+  }, [attempt]);
+
   return (
     <View style={styles.screen}>
       <Text style={styles.title}>Ateş türü Pokémon’lar</Text>
+      {loading ? (
+        <ActivityIndicator accessibilityLabel="Liste yükleniyor" color="#a33a18" style={styles.status} />
+      ) : error ? (
+        <View style={styles.status}>
+          <Text style={styles.body}>Pokémon listesi yüklenemedi.</Text>
+          <Pressable accessibilityRole="button" onPress={() => setAttempt((value) => value + 1)} style={styles.retry}>
+            <Text style={styles.retryText}>Tekrar dene</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <FlatList
+          data={items}
+          keyExtractor={(item) => item.name}
+          ListEmptyComponent={<Text style={styles.body}>Pokémon bulunamadı.</Text>}
+          renderItem={({ item }) => (
+            <View style={styles.row}>
+              <Text style={styles.body}>{item.name.charAt(0).toUpperCase() + item.name.slice(1)}</Text>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
@@ -55,6 +111,10 @@ export default function App() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, padding: 20, backgroundColor: '#fff8f1' },
-  title: { color: '#291910', fontSize: 26, fontWeight: '800' },
+  title: { color: '#291910', fontSize: 26, fontWeight: '800', marginBottom: 16 },
+  status: { marginTop: 24, alignItems: 'center' },
+  retry: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
+  retryText: { color: '#a33a18', fontWeight: '700' },
+  row: { minHeight: 48, justifyContent: 'center', borderBottomWidth: 1, borderBottomColor: '#e2cfc2', paddingVertical: 12 },
   body: { color: '#291910', fontSize: 16 },
 });

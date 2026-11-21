@@ -2,7 +2,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 type StackRoutes = { Tabs: undefined; Detail: { name: string } };
 type TabRoutes = { List: undefined; Saved: undefined };
@@ -18,6 +18,9 @@ function ListScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [search, setSearch] = useState('');
+  const query = search.trim().toLowerCase();
+  const filteredItems = items.filter((item) => item.name.toLowerCase().startsWith(query));
 
   useEffect(() => {
     const controller = new AbortController();
@@ -48,6 +51,17 @@ function ListScreen() {
   return (
     <View style={styles.screen}>
       <Text style={styles.title}>Ateş türü Pokémon’lar</Text>
+      <TextInput
+        accessibilityLabel="Pokémon ara"
+        placeholder="Pokémon ara"
+        placeholderTextColor="#695249"
+        value={search}
+        onChangeText={setSearch}
+        autoCapitalize="none"
+        autoCorrect={false}
+        returnKeyType="search"
+        style={styles.search}
+      />
       {loading ? (
         <ActivityIndicator accessibilityLabel="Liste yükleniyor" color="#a33a18" style={styles.status} />
       ) : error ? (
@@ -59,9 +73,10 @@ function ListScreen() {
         </View>
       ) : (
         <FlatList
-          data={items}
+          data={filteredItems}
+          keyboardShouldPersistTaps="handled"
           keyExtractor={(item) => item.name}
-          ListEmptyComponent={<Text style={styles.body}>Pokémon bulunamadı.</Text>}
+          ListEmptyComponent={<Text style={styles.body}>Sonuç bulunamadı.</Text>}
           renderItem={({ item }) => (
             <View style={styles.row}>
               <Text style={styles.body}>{item.name.charAt(0).toUpperCase() + item.name.slice(1)}</Text>
@@ -112,6 +127,7 @@ export default function App() {
 const styles = StyleSheet.create({
   screen: { flex: 1, padding: 20, backgroundColor: '#fff8f1' },
   title: { color: '#291910', fontSize: 26, fontWeight: '800', marginBottom: 16 },
+  search: { minHeight: 48, borderWidth: 1, borderColor: '#e2cfc2', borderRadius: 12, paddingHorizontal: 14, marginBottom: 12, color: '#291910', fontSize: 16 },
   status: { marginTop: 24, alignItems: 'center' },
   retry: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
   retryText: { color: '#a33a18', fontWeight: '700' },

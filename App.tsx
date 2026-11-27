@@ -2,7 +2,7 @@ import { BottomTabScreenProps, createBottomTabNavigator } from '@react-navigatio
 import { CompositeScreenProps, NavigationContainer } from '@react-navigation/native';
 import { NativeStackScreenProps, createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 type StackRoutes = { Tabs: undefined; Detail: { name: string } };
 type TabRoutes = { List: undefined; Saved: undefined };
@@ -106,6 +106,12 @@ type PokemonDetail = {
   height: number;
   weight: number;
   sprites: { front_default: string | null };
+  stats: { base_stat: number; stat: { name: string } }[];
+};
+
+const statNames: Record<string, string> = {
+  hp: 'Can', attack: 'Saldırı', defense: 'Savunma',
+  'special-attack': 'Özel saldırı', 'special-defense': 'Özel savunma', speed: 'Hız',
 };
 
 function DetailScreen({ route }: NativeStackScreenProps<StackRoutes, 'Detail'>) {
@@ -148,7 +154,7 @@ function DetailScreen({ route }: NativeStackScreenProps<StackRoutes, 'Detail'>) 
           </Pressable>
         </View>
       ) : pokemon ? (
-        <>
+        <ScrollView contentContainerStyle={styles.detail}>
           <View style={styles.portrait}>
             {pokemon.sprites.front_default ? (
               <Image
@@ -162,7 +168,23 @@ function DetailScreen({ route }: NativeStackScreenProps<StackRoutes, 'Detail'>) 
             <Text style={styles.body}>Boy {(pokemon.height / 10).toLocaleString('tr-TR')} m</Text>
             <Text style={styles.body}>Ağırlık {(pokemon.weight / 10).toLocaleString('tr-TR')} kg</Text>
           </View>
-        </>
+          <View style={styles.stats}>
+            <Text accessibilityRole="header" style={styles.subtitle}>Temel istatistikler</Text>
+            {pokemon.stats.map(({ stat, base_stat }) => (
+              <View key={stat.name} accessible accessibilityLabel={`${statNames[stat.name] ?? stat.name}, ${base_stat}`} style={styles.stat}>
+                <View style={styles.statLabels}>
+                  <Text style={styles.body}>{statNames[stat.name] ?? stat.name}</Text>
+                  <Text style={styles.statValue}>{base_stat}</Text>
+                </View>
+                <View style={styles.track}>
+                  <View style={[styles.fill, { width: `${Math.min(150, Math.max(0, base_stat)) / 1.5}%` }]} />
+                  <View style={styles.reference} />
+                </View>
+              </View>
+            ))}
+            <Text style={styles.legend}>Çizgi 100 · ölçek 0–150</Text>
+          </View>
+        </ScrollView>
       ) : <ActivityIndicator accessibilityLabel="Ayrıntılar yükleniyor" color="#a33a18" style={styles.status} />}
     </View>
   );
@@ -199,5 +221,15 @@ const styles = StyleSheet.create({
   portrait: { minHeight: 176, borderWidth: 1, borderColor: '#e2cfc2', borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   sprite: { width: 156, height: 156, resizeMode: 'contain' },
   measurements: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 18 },
+  detail: { paddingBottom: 24 },
+  stats: { marginTop: 24, gap: 12 },
+  subtitle: { color: '#291910', fontSize: 21, fontWeight: '700' },
+  stat: { gap: 6 },
+  statLabels: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
+  statValue: { color: '#291910', fontSize: 16, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  track: { height: 10, borderRadius: 5, backgroundColor: '#e2cfc2', overflow: 'hidden' },
+  fill: { height: '100%', backgroundColor: '#a33a18' },
+  reference: { position: 'absolute', left: '66.6667%', width: 2, height: '100%', backgroundColor: '#291910' },
+  legend: { color: '#695249', fontSize: 12 },
   body: { color: '#291910', fontSize: 16 },
 });

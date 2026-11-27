@@ -1,7 +1,7 @@
 import { BottomTabScreenProps, createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { CompositeScreenProps, NavigationContainer } from '@react-navigation/native';
 import { NativeStackScreenProps, createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 
 type StackRoutes = { Tabs: undefined; Detail: { name: string } };
@@ -11,6 +11,17 @@ const Stack = createNativeStackNavigator<StackRoutes>();
 const Tabs = createBottomTabNavigator<TabRoutes>();
 
 type Pokemon = { name: string; url: string };
+const SavedContext = createContext({
+  savedNames: [] as string[],
+  toggleSaved: (_name: string) => {},
+});
+
+function toggleSavedName(current: string[], name: string): string[] {
+  return current.includes(name)
+    ? current.filter((saved) => saved !== name)
+    : [...current, name];
+}
+
 type TypeResponse = { pokemon: { pokemon: Pokemon }[] };
 
 type ListProps = CompositeScreenProps<
@@ -93,10 +104,23 @@ function ListScreen({ navigation }: ListProps) {
   );
 }
 
-function SavedScreen() {
+function SavedScreen({ navigation }: CompositeScreenProps<
+  BottomTabScreenProps<TabRoutes, 'Saved'>,
+  NativeStackScreenProps<StackRoutes>
+>) {
+  const { savedNames } = useContext(SavedContext);
   return (
     <View style={styles.screen}>
-      <Text style={styles.body}>Henüz kayıt yok.</Text>
+      <FlatList
+        data={savedNames}
+        keyExtractor={(name) => name}
+        ListEmptyComponent={<Text style={styles.body}>Henüz kayıt yok.</Text>}
+        renderItem={({ item: name }) => (
+          <Pressable accessibilityRole="button" onPress={() => navigation.navigate('Detail', { name })} style={styles.row}>
+            <Text style={styles.body}>{name.charAt(0).toUpperCase() + name.slice(1)}</Text>
+          </Pressable>
+        )}
+      />
     </View>
   );
 }
@@ -116,6 +140,8 @@ const statNames: Record<string, string> = {
 
 function DetailScreen({ route }: NativeStackScreenProps<StackRoutes, 'Detail'>) {
   const { name } = route.params;
+  const { savedNames, toggleSaved } = useContext(SavedContext);
+  const saved = savedNames.includes(name);
   const [result, setResult] = useState<{ name: string; data?: PokemonDetail; error?: boolean }>();
   const [attempt, setAttempt] = useState(0);
 
@@ -168,6 +194,14 @@ function DetailScreen({ route }: NativeStackScreenProps<StackRoutes, 'Detail'>) 
             <Text style={styles.body}>Boy {(pokemon.height / 10).toLocaleString('tr-TR')} m</Text>
             <Text style={styles.body}>Ağırlık {(pokemon.weight / 10).toLocaleString('tr-TR')} kg</Text>
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: saved }}
+            onPress={() => toggleSaved(name)}
+            style={styles.save}
+          >
+            <Text style={styles.saveLabel}>{saved ? 'Kaydedilenlerden çıkar' : 'Kaydet'}</Text>
+          </Pressable>
           <View style={styles.stats}>
             <Text accessibilityRole="header" style={styles.subtitle}>Temel istatistikler</Text>
             {pokemon.stats.map(({ stat, base_stat }) => (
@@ -200,13 +234,21 @@ function HomeTabs() {
 }
 
 export default function App() {
+  const [savedNames, setSavedNames] = useState<string[]>([]);
+
+  function toggleSaved(name: string) {
+    setSavedNames((current) => toggleSavedName(current, name));
+  }
+
   return (
+    <SavedContext.Provider value={{ savedNames, toggleSaved }}>
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen name="Tabs" component={HomeTabs} options={{ headerShown: false }} />
         <Stack.Screen name="Detail" component={DetailScreen} options={{ title: 'Detay' }} />
       </Stack.Navigator>
     </NavigationContainer>
+    </SavedContext.Provider>
   );
 }
 
@@ -221,6 +263,8 @@ const styles = StyleSheet.create({
   portrait: { minHeight: 176, borderWidth: 1, borderColor: '#e2cfc2', borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   sprite: { width: 156, height: 156, resizeMode: 'contain' },
   measurements: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginTop: 18 },
+  save: { minHeight: 48, backgroundColor: '#a33a18', borderRadius: 12, marginTop: 18, alignItems: 'center', justifyContent: 'center', padding: 12 },
+  saveLabel: { color: '#ffffff', fontSize: 15, fontWeight: '700' },
   detail: { paddingBottom: 24 },
   stats: { marginTop: 24, gap: 12 },
   subtitle: { color: '#291910', fontSize: 21, fontWeight: '700' },
